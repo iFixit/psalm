@@ -486,6 +486,79 @@ class ErrorBaselineTest extends TestCase
         ], $remainingBaseline);
     }
 
+    public function testUpdateShouldRemoveExistingIssuesWhenDuplicated(): void
+    {
+      $baselineFile = 'baseline.xml';
+
+      $this->fileProvider->allows()->fileExists($baselineFile)->andReturns(true);
+      $this->fileProvider->allows()->getContents($baselineFile)->andReturns(
+       '<?xml version="1.0" encoding="UTF-8"?>
+       <files>
+         <file src="sample/sample-file.php">
+           <MixedAssignment>
+               <code>foo</code>
+               <code>foo</code>
+               <code>bar</code>
+           </MixedAssignment>
+         </file>
+       </files>',
+      );
+
+      $this->fileProvider->allows()->setContents(Mockery::andAnyOtherArgs());
+
+      $newIssues = [
+       'sample/sample-file.php' => [
+           new IssueData(
+               'error',
+               0,
+               0,
+               'MixedAssignment',
+               'Message',
+               'sample/sample-file.php',
+               'sample/sample-file.php',
+               'foo',
+               'foo',
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+           ),
+           new IssueData(
+               'error',
+               0,
+               0,
+               'MixedAssignment',
+               'Message',
+               'sample/sample-file.php',
+               'sample/sample-file.php',
+               'bar',
+               'bar',
+               0,
+               0,
+               0,
+               0,
+               0,
+               0,
+           ),
+       ],
+      ];
+
+      $remainingBaseline = ErrorBaseline::update(
+       $this->fileProvider,
+       $baselineFile,
+       $newIssues,
+       false,
+      );
+
+      $this->assertSame([
+       'sample/sample-file.php' => [
+           'MixedAssignment' => ['o' => 2, 's' => ['foo', 'bar']],
+       ],
+      ], $remainingBaseline);
+    }
+
     public function testAddingACommentInBaselineDoesntTriggerNotice(): void
     {
         $baselineFilePath = 'baseline.xml';
